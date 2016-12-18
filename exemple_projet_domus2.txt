@@ -1,0 +1,64 @@
+<PROGRAMME_DOMUS>
+
+// Commentaire : d√©claration des appareils
+<DECLARATION_APPAREILS>
+    eclairage e1, e2, e3.
+    volet v1, v2, v3, v4.
+    chauffage rad1.
+    alarme a1.
+    fenetre fen.
+    autre_appareil(cafetiere) cafe.
+    autre_appareil(hifi) hf.
+    
+    // dÈclaration d'un ensemble d'appareils (type ÈnumerÈ utilisateur)
+    definir mon_eclairage_salon = {e2,e3}.
+</DECLARATION_APPAREILS>
+
+// dÈclaration des interfaces
+<DECLARATION_INTERFACES>
+    interrupteur b1, b2.
+    mobile t1.
+    telecommande c1.
+</DECLARATION_INTERFACES>
+
+// d√©claration des scenarii
+<DECLARATION_SCENARII>
+	// d√©claration du scenario bonjour
+	<SCENARIO bonjour>
+		a1.eteindre;
+		cafe.allumer;
+		hf.allumer;
+	</SCENARIO bonjour>
+
+
+	<SCENARIO soiree_musique>
+		hf.allumer;
+	</SCENARIO soiree_musique>
+
+
+ 	<SCENARIO noel1>
+        		 e1.allumer;
+ 	</SCENARIO noel1>
+   
+ 	<SCENARIO noel2>
+         		e2.allumer;
+ 	</SCENARIO noel2>
+      
+  	<SCENARIO noel3>
+         		e3.allumer;
+  	</SCENARIO noel3>
+</DECLARATION_SCENARII>
+
+// d√©claration des commandes
+<DECLARATION_COMMANDES>
+	associer b1 = bonjour.
+	associer b2 = depart.
+	associer t1 = depart.
+	associer c1 = {noel1,noel2,noel3}.
+
+	// le scenario soir√©e est lanc√© tous les soirs du premier jour de chaque mois 2012 √† 18h.
+	programmer soiree = (2012,_,1,18,0).    
+	programmer soiree_musique = {(2012,11,20,19,30),(2012,11,21,19,30)}.
+</DECLARATION_COMMANDES>
+</PROGRAMME_DOMUS>
+

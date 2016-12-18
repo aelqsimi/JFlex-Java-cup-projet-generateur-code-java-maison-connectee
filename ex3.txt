@@ -1,0 +1,135 @@
+<PROGRAMME_DOMUS>
+
+// Programme de test 3  avec erreurs au niveau sémantique
+
+// déclaration des appareils
+
+<DECLARATION_APPAREILS>
+	eclairage e1, e2, e3.
+	volet v1, v2, v3, v4.
+	autre_appareil(hifi) hf.
+	chauffage r1, rad1.
+	alarme a1,a2,a3.
+	volet v5.
+	fenetre fen.
+	autre_appareil(cafetiere) cafe.
+	autre_appareil(tv) ma_tv.
+	autre_appareil(video_proj) proj.
+	autre_appareil(lave_vaisselle) lv.
+	autre_appareil(lave_linge) ll.
+	autre_appareil(portail) port.
+	autre_appareil(ordinateur) ordi, ordi1, ordi2.
+
+	// déclaration d'un ensemble d'appareils (type énuméré utilisateur)
+	definir mon_eclairage_salon = {e2,e3}.
+	definir elec_salon = {ma_tv,proj,ordi3}.
+</DECLARATION_APPAREILS>
+
+// d�claration des interfaces
+<DECLARATION_INTERFACES>
+	interrupteur b1,b3.
+	mobile t1.
+	telephone tel1.
+	tablette tab1.
+	telecommande zap.
+	interrupteur b2.
+</DECLARATION_INTERFACES>
+
+// déclaration des scenarii
+<DECLARATION_SCENARII>
+
+	// déclaration du scenario bonjour
+	<SCENARIO bonjour>
+		pourtout v:volet faire v.ouvrir; fait;
+		a1.eteindre;
+		cafe.allumer;
+		si (rad1.etat == eteint) alors rad1.allumer; fsi;
+		hf.allumer;
+	</SCENARIO bonjour>
+
+	// déclaration du scenario de test
+	<SCENARIO test>
+		e1.allumer;
+		cafe.eteindre;
+		e1.allumer;
+	</SCENARIO test>
+
+	<SCENARIO test2>
+		si (hf.etat == allume) alors message(hf," allumée "); fsi;	
+		si (hf.etat == eteint) alors message(hf," éteinte "); fsi;	
+		e1.allumer;
+		cafe.eteindre;
+	</SCENARIO test2>
+
+	<SCENARIO test3>
+		si (hf.etat == allume) alors message(hf," allumée "); 
+		sinon message(hf," éteinte "); fsi;	
+		e1.allumer;
+		cafe.eteindre;
+		e1.eteindre;
+	</SCENARIO test3>
+
+	<SCENARIO test4>
+		v1.ouvrir;
+		a1.eteindre;
+		v2.ouvrir;
+		v3.ouvrir;
+		hf.allumer;
+		cafe.allumer;
+		v5.ouvrir;
+		si (rad1.etat == eteint) alors rad1.allumer; fsi;		
+		v4.ouvrir;
+	</SCENARIO test4>
+
+	<SCENARIO test5>	
+		e1.allumer;
+		cafe.eteindre;
+	</SCENARIO test5>
+
+	<SCENARIO test6>	
+		e1.allumer;
+		si (hf.etat == allume) alors message(" allumée "); fsi;
+		cafe.eteindre;
+	</SCENARIO test6>
+
+	<SCENARIO soiree>
+		pourtout v:volet faire v.eteindre; fait;
+		pourtout e:mon_eclairage_salon faire e.allumer; fait;
+	</SCENARIO soiree>
+
+	<SCENARIO soiree_musique>
+		executer_scenario soiree; 
+		hf.ouvrir;
+	</SCENARIO soiree_musique>
+
+	<SCENARIO depart>
+		pourtout v:volet faire v1.fermer; fait;
+		pourtout e:eclairage faire e.eteindre; fait;
+		si (fen.etat == ferme) alors a.allumer; 
+		sinon message("Attention : la fenêtre ",fen," est ouverte !"); fsi;
+		pourtout e:autre_appareil faire e.eteindre; fait;
+	</SCENARIO depart>
+// fin scenarii
+</DECLARATION_SCENARII>
+
+// déclaration des commandes
+<DECLARATION_COMMANDES>
+	associer b1 = bonjour.
+	associer tel1 = test.
+	associer tab1 = test.
+	associer zap = test.
+	associer b1 = test2.
+	associer b3 = bonjour2.
+
+	programmer test2 = (2016,3,21,_,0).
+	programmer bonjour3 = (_,9,1,7,0).
+	programmer test3 = (2012,_,1,10,0).
+	programmer test4 = (2012,9,1,10,0).  
+	programmer soiree_musique = {(2012,_,31,19,30),(2013,1,1,1,1)}.
+	programmer test3 = (2013,1,1,10,0).
+
+	associer b2 = depart.
+	associer t1 = depart.
+</DECLARATION_COMMANDES>
+</PROGRAMME_DOMUS>
+

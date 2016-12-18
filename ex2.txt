@@ -1,0 +1,65 @@
+<PROGRAMME_DOMUS>
+// Programme de test 2  avec erreurs syntaxiques (6) et sémantiques
+// déclaration des appareils
+<DECLARATION_APPAREILS>
+	eclairage e1, e2, e3. 
+	volet v1, e2, e3, v4.
+	autre_appareil(hifi) e3.
+	chauffage r1, rad1.
+	alarme a1,a2,a1.
+	volet v5.
+	autre_appareil(cafetiere) cafe.
+</DECLARATION_APPAREILS>
+
+// d�claration des interfaces
+<DECLARATION_INTERFACES>
+    interrupteur b1, b3.
+    telecommande zap, si.
+    interrupteur message, b2. 
+</DECLARATION_INTERFACES>
+
+// déclaration des scenarii
+<DECLARATION_SCENARII>
+
+	// déclaration du scenario bonjour
+	<SCENARIO bonjour>
+		pourtout v1:volet faire v1.ouvrir; fait;
+		a1.eteindre;
+		cafe.allumer;
+		si (rad1.etat == eteint) alors rad1.allumer; fsi;
+		hf.allumer;
+	</SCENARIO bonjour>
+
+	// déclaration du scenario de test
+	<SCENARIO rad1>
+		e1.allumer;
+		cafe.eteindre;
+	</SCENARIO rad1>
+
+	<SCENARIO bonjour>
+		si (a1.etat == allume) alors message(a1," allumée "); fsi;
+	</SCENARIO bonjour>
+
+	<SCENARIO test3>
+		pourtout bonjour:volet faire bonjour.ouvrir; fait;
+		cafe.eteindre;
+	</SCENARIO test3>
+
+	<SCENARIO sinon>
+		a1.eteindre;
+	</SCENARIO sinon>
+
+	<SCENARIO test4>
+		pourtout etat:volet faire etat.ouvrir; fait;
+		cafe.eteindre;
+	</SCENARIO test5>
+
+// fin scenarii
+</DECLARATION_SCENARII>
+
+// déclaration des commandes
+<DECLARATION_COMMANDES>
+	associer b1 = bonjour.
+</DECLARATION_COMMANDES>
+</PROGRAMME_DOMUS>
+

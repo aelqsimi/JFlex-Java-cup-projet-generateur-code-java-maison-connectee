@@ -1,0 +1,1105 @@
+// Specification JCup
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+parser code {:
+	public static void main(String args[]) throws Exception {
+		new parser(new Yylex(System.in)).parse();
+	}
+
+	public void syntax_error(Symbol cur_token) { 
+		// n'interrompt pas la compil... 
+		// on est par defaut dans l'etat error qui permet ensuite la recup
+		// par défaut : report_error("syntax error", null);
+		report_error("Syntaxe incorrecte <"+tokenToString(cur_token)+">", null);        
+	}
+
+	public void report_error(String message, Object info) {   
+		// n'interrompt pas la compil
+		if (info == null) System.err.println("Mon erreur <"+ ptext()+ "> ligne "+ pline() + ", colonne " + pcolumn() + " : " + message);
+		else System.err.println("Mon erreur <"+ptext()+ "> ligne "+ pline() + ", colonne " + pcolumn() + " : " +message+" : "+info);
+		System.err.println("-> mais on continue l'analyse... ");
+	}
+	
+	public void report_semantic_error(String message) {   
+		// n'interrompt pas la compil
+		System.err.println("Mon erreur <"+ ptext()+ "> ligne "+ pline() + ", colonne " + pcolumn() + " : " + message);
+		System.err.println("-> mais on continue l'analyse... ");
+	}
+
+	public void unrecovered_syntax_error(Symbol cur_token) {
+    	// par defaut : report_fatal_error("Couldn't repair and continue parse", null);
+		// on n'a pas reussi a faire de la recup
+		report_fatal_error("Recuperation impossible <"+tokenToString(cur_token)+">", null);   // interrompt la compil     
+	}
+
+	public void report_fatal_error(String message, Object info) {  
+		// qd cette fct est appelee, message vaut par defaut "Couldn't repair and continue parse"
+		String m = "Mon erreur fatale <"+ ptext()+ "> ligne " + pline() + ", colonne " + pcolumn() + " : " + message;
+		if (info == null) System.err.println(m);
+		else System.err.println(m+" : "+info);
+		System.err.println("-> arrêt de l'analyse...");
+		done_parsing(); // interrompt la compil
+  	}
+
+	public int pline(){
+		return ((Yylex)getScanner()).getYyLine();
+	}
+	public int pcolumn(){
+		return ((Yylex)getScanner()).getYyColumn();
+	}
+	public String ptext(){
+		return ((Yylex)getScanner()).getYyText();
+	}
+
+
+public String tokenToString (Symbol token) {
+// qqs exemples pour voir...
+     switch (token.sym) {
+	case sym.SI : return "SI"; 
+	case sym.CHAINE : return "CHAINE "+token.value;  
+	case sym.ENTIER : return "ENTIER "+token.value;  
+	//  ... A compléter !!
+	default : return "Token imprévu ou error";
+	}
+}
+
+:}
+
+
+
+action code {:
+
+	void exemple_de_fonction(String i1, String i2)
+	{
+		String m = "Erreur syntaxique <"+i2+"> au lieu de <"+i1+">";
+		if (!(i1.equals(i2))) parser.report_error(m,null);	 
+	}
+
+	public static File CMaisonUser, HabitatSpecific;
+	public 	static FileWriter fwMaison, fwHabitat;
+	
+	String courant ="", nom_equi="", nom_groupe ="", action_courante ="", str_scenario ="", str_action="", str_corps_scenario="";
+	int flag = 0, cpt = 0;
+
+	public static ArrayList<Equipement> equipements = new ArrayList<Equipement>();
+
+	public static ArrayList<Interf> interfaces = new ArrayList<Interf>();
+
+	public static ArrayList<Groupe_Equipement> liste_groupe_equi = new ArrayList<Groupe_Equipement>();
+
+	public static ArrayList<Groupe_Interf> liste_groupe_interf = new ArrayList<Groupe_Interf>();
+
+	public static ArrayList<String> temp_id = new ArrayList<String>();
+
+	public static ArrayList<String> scenarios = new ArrayList<String>();
+
+	public static ArrayList<String> mots_cles = new ArrayList<String>();
+
+	public static ArrayList<String> corps_scen = new ArrayList<String>();
+
+	public static ArrayList<Scenario> liste_scenarios = new ArrayList<Scenario>();
+
+	public static void writeInFile(String str,FileWriter fw) throws IOException{
+		fw.write(str);
+	}
+
+	public static void closeFile(FileWriter fw) throws IOException{
+		String str = "}";
+		fw.write(str);
+		fw.close();
+	}
+
+	/******************************* classe scenario **********************************/
+
+	public static class Scenario 
+	{
+		public static String nom;
+		public static ArrayList<String> actions;
+		public static String fin_scenario;
+		public Scenario()
+		{
+			nom ="";
+			actions = new ArrayList<String>();
+			fin_scenario = "";
+		}
+	}
+		
+
+
+	//public static ArrayList<String> mots_cle = new ArrayList<String>();
+						
+	public static class Interf {
+		public String nom;
+		public ArrayList<String> identifiants;
+		public Interf() {
+			nom ="";
+			identifiants = new ArrayList<String>();
+		}	
+	}
+
+	public static class Equipement {
+		public String nom;
+		public ArrayList<String> identifiants;
+		public ArrayList<String> actions;
+		public ArrayList<String> etats;
+		public Equipement() {
+			nom ="";
+			identifiants = new ArrayList<String>();
+			actions = new ArrayList<String>();
+			etats = new ArrayList<String>();
+		}	
+	}
+
+
+	public static class Autre_Equipement extends Equipement{
+		public static ArrayList<String> actions = new ArrayList<String>();
+		public static ArrayList<String> etats = new ArrayList<String>();
+		public String type = "autre_equipement";
+		public Autre_Equipement() {
+			nom ="";
+			identifiants = new ArrayList<String>();
+			actions.add("allumer");
+			actions.add("eteindre");
+			etats.add("allume");
+			etats.add("eteint");
+		}
+	}
+
+	public static class Groupe_Equipement {
+		public String type;
+		public String nom;
+		public ArrayList<String> identifiants;
+		public Groupe_Equipement() {
+			type = "";
+			nom ="";
+			identifiants = new ArrayList<String>();
+		}	
+	}
+
+	public static class Groupe_Interf {
+		public String type;
+		public String nom;
+		public ArrayList<String> identifiants;
+		public Groupe_Interf() {
+			type = "";
+			nom ="";
+			identifiants = new ArrayList<String>();
+		}	
+	}
+
+	public static class Inter {
+		public String nom;
+		public Inter() {
+			nom ="";
+		}
+	}
+
+	public static void ini() {
+
+		/**********remplissage mots clés ***************/
+
+		mots_cles.add("si");
+		mots_cles.add("sinon");
+		mots_cles.add("alors");
+		mots_cles.add("pourtout");
+		mots_cles.add("fsi");
+		mots_cles.add("faire");
+		mots_cles.add("fait");
+		mots_cles.add("message");
+
+		/****** Création des fichiers *******/
+		try{
+			CMaisonUser = new File("CMaisonUser.java");
+			HabitatSpecific = new File("HabitatSpecific.java");
+			fwMaison = new FileWriter(CMaisonUser);
+			fwHabitat = new FileWriter(HabitatSpecific);
+		}
+		catch (IOException e){
+			System.out.println("Erreur lors de la création d'un des fichiers "); 
+		};
+
+		/******************* création des équipements ****************************/
+		Equipement eclairage = new Equipement();
+		eclairage.nom = "eclairage";
+		eclairage.actions.add("allumer");
+		eclairage.actions.add("eteindre");
+		eclairage.actions.add("tamiser");
+		eclairage.etats.add("allume");
+		eclairage.etats.add("eteint");
+		eclairage.etats.add("demi");
+		//eclairage.add("eclairage");
+
+		Equipement volet = new Equipement();
+		volet.nom = "volet";
+		volet.actions.add("ouvrir");
+		volet.actions.add("ouvrir_partiel");
+		volet.actions.add("fermer");
+		volet.actions.add("fermer_partiel");
+		volet.etats.add("ouver");
+		volet.etats.add("ferme");
+		volet.etats.add("demi");
+		//volet.add("volet");
+
+		Equipement chauffage = new Equipement();
+		chauffage.nom = "chauffage";
+		chauffage.actions.add("allumer");
+		chauffage.actions.add("allumer_eco");
+		chauffage.actions.add("eteindre");
+		chauffage.etats.add("allume");
+		chauffage.etats.add("eteint");
+		chauffage.etats.add("eco");
+		//chauffage.add("chauffage");
+		
+		Equipement alarme = new Equipement();
+		alarme.nom = "alarme";
+		alarme.actions.add("allumer");
+		alarme.actions.add("allumer_partiel");
+		alarme.actions.add("eteindre");
+		alarme.etats.add("allume");
+		alarme.etats.add("eteint");
+		alarme.etats.add("demi");
+		//alarme.add("alarme");
+		
+		Equipement fenetre = new Equipement();
+		fenetre.nom = "fenetre";
+		fenetre.actions.add("ouvrir");
+		fenetre.actions.add("ouvrir_partiel");
+		fenetre.actions.add("fermer");
+		fenetre.actions.add("fermer_partiel");
+		fenetre.etats.add("ouvert");
+		fenetre.etats.add("ferme");
+		fenetre.etats.add("demi");
+		//fenetre.add("fenetre");
+		
+		Equipement tv = new Autre_Equipement();
+		tv.nom = "tv";
+		//tv.add("tv");
+	
+		Equipement hifi = new Autre_Equipement();
+		hifi.nom = "hifi";
+		
+		Equipement cafetiere = new Autre_Equipement();
+		cafetiere.nom = "cafetiere";
+		
+		Equipement video_proj = new Autre_Equipement();
+		video_proj.nom = "video_proj";
+	
+		Equipement seche_linge = new Autre_Equipement();
+		seche_linge.nom = "seche_linge";
+
+		Equipement lave_linge = new Autre_Equipement();
+		lave_linge.nom = "lave_linge";
+
+		Equipement portail = new Autre_Equipement();
+		portail.nom = "portail";
+
+		Equipement lave_vaisselle = new Autre_Equipement();
+		lave_vaisselle.nom = "lave_vaisselle";
+
+		Equipement ordinateur = new Autre_Equipement();
+		ordinateur.nom = "ordinateur";
+
+
+		equipements.add(eclairage);
+		equipements.add(volet);
+		equipements.add(chauffage);
+		equipements.add(alarme);
+		equipements.add(fenetre);
+		equipements.add(tv);
+		equipements.add(hifi);
+		equipements.add(cafetiere);
+		equipements.add(video_proj);
+		equipements.add(seche_linge);
+		equipements.add(lave_linge);
+		equipements.add(portail);
+		equipements.add(lave_vaisselle);
+		equipements.add(ordinateur);
+
+		/****************** interfaces ********************************/
+		Interf interrupteur = new Interf();
+		interrupteur.nom = "interrupteur";
+
+		Interf mobile = new Interf();
+		mobile.nom = "mobile";
+
+		Interf telecommande = new Interf();
+		telecommande.nom = "telecommande";
+
+		Interf tablette = new Interf();
+		tablette.nom = "tablette";
+
+		Interf telephone = new Interf();
+		telephone.nom = "telephone";
+
+		interfaces.add(interrupteur);
+		interfaces.add(mobile);
+		interfaces.add(telecommande);
+		interfaces.add(tablette);
+		interfaces.add(telephone);
+	}
+	
+	public static int check_id(String id) {
+		
+		for(int i = 0; i< equipements.size(); i++)
+		{
+			if(equipements.get(i).identifiants.contains(String.valueOf(id)))
+				return 0;					 
+		}
+		
+
+		for(int i = 0; i< interfaces.size(); i++)
+		{
+			if(interfaces.get(i).identifiants.contains(String.valueOf(id)))
+				return 0;					 
+		}
+
+		for(int i = 0; i< liste_groupe_equi.size(); i++)
+		{
+			if(liste_groupe_equi.get(i).identifiants.contains(String.valueOf(id)))
+				return 0;					 
+		}
+		return -1;
+	}
+
+	public static void ajouter_id(String id, String courant, int flag) {
+		if(flag == 0) 
+		{
+			for(int i = 0; i< equipements.size(); i++)
+			{
+				if(equipements.get(i).nom.equalsIgnoreCase(courant))
+					equipements.get(i).identifiants.add(id);					 
+			}
+		}
+		
+		else
+		{
+			for(int i = 0; i< interfaces.size(); i++)
+			{
+				if(interfaces.get(i).nom.equalsIgnoreCase(courant))
+					interfaces.get(i).identifiants.add(id);					 
+			}
+		}
+			
+	}
+
+	public static String get_nom_equi(String id) {
+		for(int i = 0; i< equipements.size(); i++)
+		{
+			if(equipements.get(i).identifiants.contains(String.valueOf(id)))
+				return equipements.get(i).nom;					 
+		}
+		return null;
+	}
+	/******************* vérification de l'id d'un groupe ************************/
+	public static int check_groupe_id(String id) {
+		for(int i = 0; i< liste_groupe_equi.size(); i++)
+		{
+			if(liste_groupe_equi.get(i).nom.equalsIgnoreCase(String.valueOf(id)))
+				return 0;					 
+		}
+		return -1;
+	}
+
+	/******************* vérification de l'id dans un groupe ************************/
+	public static int check_id_in_groupe(String id) {
+		for(int i = 0; i< liste_groupe_equi.size(); i++)
+		{
+			if(liste_groupe_equi.get(i).identifiants.contains(String.valueOf(id)))
+				return 0;					 
+		}
+		return -1;
+	}
+
+	/******************* vérification de l'id d'un scenario ************************/
+	public static int check_scenario_id(String id) {
+		for(int i = 0; i< equipements.size(); i++)
+		{
+			if(equipements.get(i).nom.equalsIgnoreCase(String.valueOf(id)))
+				return 0;					 
+		}
+	
+		if(mots_cles.contains(String.valueOf(id)))
+			return 1;
+		if(check_id(id)==0)
+			return 2;
+		if(scenarios.contains(String.valueOf(id)))
+			return 3;
+		return -1;
+	}
+
+	/******************* ajout d'un equipement à un groupe ************************/
+	public static int ajouter_equi_groupe(String id, String nom_equi, Groupe_Equipement groupe) {
+		
+		if(groupe.identifiants.size() == 0)
+		{
+			if(check_id_in_groupe(id) == 0)
+			{
+				return -1;
+			}
+			else 
+			{
+				groupe.type = nom_equi;
+				groupe.identifiants.add(id);
+				liste_groupe_equi.add(groupe);		
+				return 0;
+			}
+		}
+
+		else
+		{
+			
+			if(check_groupe_id(groupe.nom) == 0)
+				if(check_id_in_groupe(id) == 0)
+				{
+					return 0;
+				}
+				else 
+				{
+					groupe.type = nom_equi;
+					groupe.identifiants.add(id);	
+					return 0;
+				}
+			else
+			{
+				groupe.type = nom_equi;
+				groupe.identifiants.add(id);
+				liste_groupe_equi.add(groupe);	
+				return 0;
+			}
+		}				
+	}
+
+	String str1 = "// CMaisonUser.java\n"+
+			"package domus;\n"+
+			"public class CMaisonUser extends CMaison {\n"+
+			"public CMaisonUser() {\n"+
+    			"	super();\n";
+
+	String str2 = "// HabitatSpecific.java\n"+
+			"package domus;\n"+
+			"public class HabitatSpecific extends Habitat {\n"+
+			"public HabitatSpecific(ArrayList<CAppareil> lapp, ArrayList<CEnsAppareil> lens, ArrayList<CScenario> lscen, ArrayList<CInterface> lint, ArrayList<CProgrammation> lprog)\n"+
+			"{\n"+
+    			"	super(lapp,lens,lscen,lint,lprog);\n"+
+			"}\n"+
+			"public void execScenarioNum(int num)\n"+
+			"{\n"+
+     			"	System.out.println( \"Execution du scenario \"+this.l_scenarios.get(num).getNomScenario()+\"... \");\n";
+
+/*****************************************************************************************************************************
+******************************** Fonctions d'écriture dans le fichier CMaisonUser.java ***************************************
+*****************************************************************************************************************************/
+	public void ecrireMaison() throws IOException
+	{
+		for(Equipement e : equipements)
+		{
+			switch(e.nom){
+				case "eclairage":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CEclairage "+ id+"  = new CEclairage(\""+id+"\",TypeAppareil.ECLAIRAGE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "volet":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CVoletFenetre "+ id+"  = new CVoletFenetre(\""+id+"\",TypeAppareil.VOLET);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "fenetre":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CVoletFenetre "+ id+"  = new CVoletFenetre(\""+id+"\",TypeAppareil.VOLET);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "alarme":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAlarme "+ id+"  = new CAlarme(\""+id+"\",TypeAppareil.ALARME);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "chauffage":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CChauffage "+ id+"  = new CChauffage(\""+id+"\",TypeAppareil.CHAUFFAGE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "cafetiere":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_CAFE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+	
+				case "hifi":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_HIFI);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "tv":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_TV);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "video_proj":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_VIDEO_PROJ);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "lave_vaisselle":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_LAVE_VAISSELLE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "lave_linge":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_LAVE_LINGE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "seche_linge":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_SECHE_LINGE);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "ordinateur":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_ORDINATEUR);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+
+				case "portail":{ 
+							  str1 = "";
+							  for(String id : e.identifiants)
+							  {
+								str1 +="	CAutreAppareil "+ id+"  = new CAutreAppareil(\""+id				+"\",TypeAppareil.AUTRE_APPAREIL_PORTAIL);\n"+
+									"	ma_liste_appareils.add("+id+");\n";
+							  };
+						writeInFile(str1,fwMaison);
+						break;
+						}
+				}
+		}
+
+		/************************************* Ecriture des groupes d'équipements ************************/
+
+		for(Groupe_Equipement g : liste_groupe_equi)
+		{
+
+			str1 = "	CEnsAppareil "+g.nom+" = new CEnsAppareil(\""+g.nom+"\");\n";
+			for(String id : g.identifiants)
+			{
+				str1 +="	"+g.nom+".addAppareil(" + id +");\n";
+			};
+			str1 += "	ma_liste_ens_appareils.add("+g.nom+");\n";
+			writeInFile(str1,fwMaison);
+		}
+		
+		/************************************* Ecriture des interfaces ************************/
+		for(Interf i : interfaces)
+		{
+			str1 = "";
+			for(String id : i.identifiants)
+			{
+				str1 +="	CInterface "+id+"  = new CInterface(\"" + id +"\",TypeInterface."+i.nom.toUpperCase()+");\n";
+				str1 += "	ma_liste_interfaces.add("+id+");\n";
+				
+			};
+			writeInFile(str1,fwMaison);
+		}
+
+		/************************************* Ecriture des interfaces ************************/
+		for(Scenario s : liste_scenarios)
+		{
+			for(int i = s.actions.size()-1; i==0; i--)
+			{
+				writeInFile(s.actions.get(i),fwMaison);
+			};
+			writeInFile(s.fin_scenario,fwMaison);
+		}
+	}
+			
+:}
+
+/*************************************** TERMINAL **************************************************/
+
+terminal DEBPROG, FINPROG, DEBDECLAAPP, FINDECLAAPP, DEBDECLAINTER, FINDECLAINTER, DEBDECLASCEN, FINDECLASCEN, DEBDECLACOMM, FINDECLACOMM, DEBSCEN, FINSCEN, EQUAL, POINT, POINTVIRG, VIRG, DEUXPTS, PARO, PARF, GUIO, GUIF, AFFECT, DEF, EXESCEN, ASSOC, PROGRAMMER, MESS, PRTOUT, FAIRE, FAIT, SI, ALORS, SINON, FSI, OUVRIR, FERMER, ETEINDRE, ALLUMER, TAMISER, ETAT, ALLUMERPART, ALLUMERECO, OUVRIRPART, FERMERPART, ALLUME, ETEINT, DEMI, ECO, OUVERT, FERME, ECLAIRAGE, VOLET, CHAUFFAGE, ALARME, FENETRE, AUTREAPP, INTERUPTEUR, MOBILE, TELEPHONE, TELECOMMANDE, TABLETTE, TV, HIFI, CAFETIERE, VIDEOPROJ, LAVEVAISS, LAVELING, SECHELING, ORDINATEUR, PORTAIL, ANTISLASH;
+
+terminal String COMMENT, IDENT,CHAINE;
+
+terminal Integer ENTIER;
+
+/************************************* NON TERMINAL ************************************************/
+
+non terminal prog, lcomment, decs, scenarios, dec_scen, equip, inter, autre_app, app, def, vars, act, decs_com, com_asso, asso_simple, asso_groupe, scenars, com_prog, date, nb, vars_autres_apps, definition, pourtt, sii, sinon, etats, equip_ou_ident, mess_content, message, corps_sii, suite_sii, vars_interf;
+
+/******************************************** GRAMMAIRE **************************************************************************/
+prog	::= {: ini(); writeInFile(str1,fwMaison);
+		      writeInFile(str2,fwHabitat);
+		      :} 
+	
+lcomment DEBPROG lcomment DEBDECLAAPP lcomment decs lcomment FINDECLAAPP lcomment DEBDECLAINTER lcomment decs lcomment 		FINDECLAINTER lcomment DEBDECLASCEN lcomment scenarios lcomment FINDECLASCEN lcomment DEBDECLACOMM lcomment decs_com lcomment FINDECLACOMM lcomment FINPROG 
+{:	ecrireMaison();
+	closeFile(fwMaison);
+        closeFile(fwHabitat);
+	System.out.println("FINPROG "+parser.pline()+","+parser.pcolumn()); :} ;
+
+/******************************************** EQUIPEMENTS **************************************************************************/
+
+/*---------------------- déclaration équipement(s) ou interface(s)--------------------------------------*/
+decs ::= equip vars decs 
+	| autre_app decs
+	| definition decs 
+	| inter vars_interf decs
+	| equip vars
+	| inter vars_interf
+	| autre_app
+	| definition;
+/*---------------------- les équipements ou autres_équipement ------------------------------------------*/
+equip ::=  ECLAIRAGE:e{: courant = String.valueOf(e); :}
+	   | VOLET:e{: courant = String.valueOf(e); :}
+	   | CHAUFFAGE:e{: courant = String.valueOf(e);:}
+	   | ALARME:e {: courant = String.valueOf(e); :}
+	   | FENETRE:e {: courant = String.valueOf(e); :};
+
+/*---------------------- definition des autres appareils ----------------------------------------------*/
+autre_app ::= AUTREAPP PARO app PARF vars_autres_apps;
+
+/*------------- une variable. ou plusieurs variables (,) ou bien une définition groupée type enum ----*/
+vars ::= IDENT:id VIRG vars {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà existant");
+			       else ajouter_id(id,courant,0);
+			   :}
+
+         | IDENT:id POINT {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà existant");
+			       else ajouter_id(id,courant,0);
+			   :}
+	| error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};
+
+
+
+vars_interf ::= IDENT:id VIRG vars_interf {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà existant");
+			       else ajouter_id(id,courant,1);
+			   :}
+
+         | IDENT:id POINT {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà existant");
+			       else ajouter_id(id,courant,1);
+			   :}
+	| error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};
+
+definition ::= DEF IDENT:id AFFECT GUIO def GUIF POINT  
+{:   	Groupe_Equipement groupe = new Groupe_Equipement();
+	if(check_groupe_id(id) == -1)
+	{
+		nom_groupe = id;
+		groupe.nom = nom_groupe;
+		nom_groupe = String.valueOf(id);
+		for(String i : temp_id)
+		{
+			nom_equi = get_nom_equi(i);
+		     	if(nom_equi != null) 
+		    	{
+				if(ajouter_equi_groupe(i, nom_equi, groupe) == -2)
+					parser.report_semantic_error("L'appareil <"+i+"> n'est pas du meme type");
+				else if(ajouter_equi_groupe(i, nom_equi, groupe) == -1)
+					parser.report_semantic_error("L'appareil <"+i+"> appartient deja a ce groupe");
+		    	 }	
+		   	 else 
+		   	 {
+				parser.report_semantic_error("l'appareil <"+i+"> doit être préalablement déclaré pour l'ajouter à un groupe");
+
+		   	 }	
+		}
+		temp_id.clear();
+	}
+
+     	else  {
+		parser.report_semantic_error("Identifiant du groupe <"+id+"> déjà existant");
+	}
+	temp_id.clear();
+:};
+
+/*---------------------- une variable. ou plusieurs variables (,) -----------------------------------*/
+vars_autres_apps ::= IDENT:id VIRG vars_autres_apps {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà 																existant");
+			      			    else ajouter_id(id,courant,0);
+			   			 :} 
+		     | IDENT:id POINT {: if(check_id(id)==0) parser.report_semantic_error("Identifiant <"+id+"> déjà existant");
+			       else ajouter_id(id,courant,0);
+			   :}
+		     | error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};
+
+/*---------------------- definition d'un groupe d'appareils ou interfaces --------------------------*/
+def ::= IDENT:id VIRG def {: 
+			   temp_id.add(id);			
+			  :}
+	| IDENT:id	{: temp_id.add(id);
+			  :};
+
+/*------------------------- les autres appareils --------------------------------------------------*/
+app ::= TV:c{: courant = String.valueOf(c); :}
+	| HIFI:c{: courant = String.valueOf(c); :}
+	| CAFETIERE:c{: courant = String.valueOf(c); :}
+	| VIDEOPROJ:c{: courant = String.valueOf(c); :}
+	| LAVEVAISS:c{: courant = String.valueOf(c); :}
+	| LAVELING:c{: courant = String.valueOf(c); :}
+	| SECHELING:c{: courant = String.valueOf(c); :}
+	| ORDINATEUR:c{: courant = String.valueOf(c); :}
+	| PORTAIL:c{: courant = String.valueOf(c); :};
+
+/***********************************************************************************************************************************/
+
+
+/******************************************** INTERFACES **************************************************************************/
+// les interfaces
+inter ::= INTERUPTEUR:c{: courant = String.valueOf(c); :}
+	  | MOBILE:c{: courant = String.valueOf(c); :} 
+	  | TELEPHONE:c{: courant = String.valueOf(c); :} 
+	  | TELECOMMANDE:c{: courant = String.valueOf(c); :} 
+	  | TABLETTE:c{: courant = String.valueOf(c); :};
+
+/******************************************** SCENARIOS **************************************************************************/
+
+scenarios ::= DEBSCEN:s dec_scen FINSCEN:f scenarios 
+
+	{: if (!String.valueOf(s).equalsIgnoreCase(String.valueOf(f)))
+		{
+		parser.report_semantic_error("L'identifiant ouvrant <"+String.valueOf(s)+"> est different de l'identifiant <"+String.valueOf(f)+"> fermant");
+		}
+	  else if(check_scenario_id(String.valueOf(s)) == -1) 
+		{
+			Scenario sc = new Scenario();
+			sc.nom = String.valueOf(s);
+			writeInFile("	String "+String.valueOf(s)+"_contenu =\n" + str_corps_scenario,fwMaison);
+			writeInFile("	CScenario "+String.valueOf(s)+"= new"+ 				
+			" CScenario(\""+String.valueOf(s)+"\","+String.valueOf(s)+"_contenu);\n 	ma_liste_scenarios.add("+String.valueOf(s)+");\n\n",fwMaison);			
+			liste_scenarios.add(sc);
+			scenarios.add(String.valueOf(s));
+		}
+
+	   else if(check_scenario_id(String.valueOf(s)) == 0)
+		{
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> ne doit pas etre egale a un nom d'appareil");
+		}
+	   else if(check_scenario_id(String.valueOf(s)) == 1){
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> ne doit pas etre egale a un mot cle du langage");
+		}
+	   else if(check_scenario_id(String.valueOf(s)) == 2){
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> existe deja (id d'appareil)");
+		}
+	else if(check_scenario_id(String.valueOf(s)) == 3)
+		{
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> existe deja (id scenario)");
+		}
+			:}
+
+	      | DEBSCEN:s dec_scen FINSCEN:f
+ 
+		{: if (!String.valueOf(s).equalsIgnoreCase(String.valueOf(f)))
+		{
+		parser.report_semantic_error("L'identifiant ouvrant <"+String.valueOf(s)+"> est different de l'identifiant <"+String.valueOf(f)+"> fermant");
+		}
+	  else if(check_scenario_id(String.valueOf(s)) == -1) 
+		{
+			Scenario sc = new Scenario();
+			sc.nom = String.valueOf(s);
+			writeInFile("	String "+String.valueOf(s)+"_contenu =\n" + str_corps_scenario,fwMaison);
+			writeInFile("	CScenario "+String.valueOf(s)+"= new"+ 				
+			" CScenario(\""+String.valueOf(s)+"\","+String.valueOf(s)+"_contenu);\n 	ma_liste_scenarios.add("+String.valueOf(s)+");\n\n",fwMaison);			
+			liste_scenarios.add(sc);
+			scenarios.add(String.valueOf(s));
+		}
+
+	   else if(check_scenario_id(String.valueOf(s)) == 0)
+		{
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> ne doit pas etre egale a un nom d'appareil");
+		}
+	   else if(check_scenario_id(String.valueOf(s)) == 1){
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> ne doit pas etre egale a un mot cle du langage");
+		}
+	   else if(check_scenario_id(String.valueOf(s)) == 2){
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> existe deja (id d'appareil)");
+		}
+	else if(check_scenario_id(String.valueOf(s)) == 3)
+		{
+		parser.report_semantic_error("L'identifiant <"+String.valueOf(s)+"> existe deja (id scenario)");
+		}
+			:}
+
+              | error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};
+
+dec_scen ::= IDENT:id POINT OUVRIR POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.OUVRIR);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+	     
+	     | IDENT:id POINT FERMER POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.FERMER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ETEINDRE POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ETEINDRE);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMER POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT TAMISER POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.TAMISER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMERPART POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMERPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMERECO POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMERECO);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT OUVRIRPART POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.OUVRIRPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT FERMERPART POINTVIRG dec_scen  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.FERMERPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+             | EXESCEN IDENT POINTVIRG dec_scen 
+	     | pourtt dec_scen 
+	     | sii dec_scen 
+	     | message dec_scen
+	     | EXESCEN IDENT POINTVIRG  
+	     | pourtt
+	     | sii  
+	     | message 
+	     | IDENT:id POINT OUVRIR POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.OUVRIR);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT FERMER POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.FERMER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ETEINDRE POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ETEINDRE);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMER POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT TAMISER POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.TAMISER);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMERPART POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMERPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT ALLUMERECO POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.ALLUMERECO);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT OUVRIRPART POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.OUVRIRPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:}
+
+	     | IDENT:id POINT FERMERPART POINTVIRG  {: if(check_id(id)==0 ) str_corps_scenario = "\"	for(CAppareil appareil : this.l_appareils)\n"+
+       "\"		if (appareil.getNomAppareil().equals(\\\""+id+"\\\")) appareil.appliquer(TypeActionAppareil.FERMERPART);\"+\n"+str_corps_scenario;
+	else
+		parser.report_semantic_error("l'appareil <"+id+"> doit être préalablement déclaré");:};
+
+/*-------------------- POURTOUT --------------------------*/
+
+pourtt ::= PRTOUT IDENT DEUXPTS equip_ou_ident FAIRE IDENT POINT act POINTVIRG FAIT POINTVIRG 
+//	{: str_scenario +="appareil.appliquer(TypeActionAppareil."+action_courante+");\n";:}
+		| PRTOUT IDENT DEUXPTS equip_ou_ident FAIRE message  FAIT POINTVIRG
+		| PRTOUT IDENT DEUXPTS AUTREAPP PARO app PARF FAIRE IDENT POINT act POINTVIRG FAIT POINTVIRG 
+		| PRTOUT IDENT DEUXPTS AUTREAPP PARO app PARF FAIRE  message  FAIT POINTVIRG 
+		| PRTOUT IDENT DEUXPTS AUTREAPP FAIRE IDENT POINT act POINTVIRG FAIT POINTVIRG 
+		| PRTOUT IDENT DEUXPTS AUTREAPP FAIRE  message  FAIT POINTVIRG
+		| error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};
+
+/*---------------- EQUIPEMENT ou IDENTIFIANT --------------*/
+
+equip_ou_ident ::= equip
+		   | IDENT;
+
+/*--------------- MESSAGE ---------------------------------*/
+
+message ::= MESS PARO mess_content PARF POINTVIRG;
+
+ /* pourtout e:elec_salon faire message("Etat = ",e.etat); fait; */
+
+mess_content ::= CHAINE VIRG mess_content
+		| IDENT POINT ETAT VIRG mess_content 
+		| IDENT VIRG mess_content 
+		| CHAINE 
+		| IDENT POINT ETAT
+		| IDENT;
+
+/*---------------------- SI -----------------------------------*/
+
+sii ::= SI PARO IDENT POINT ETAT EQUAL etats PARF ALORS corps_sii suite_sii FSI POINTVIRG;
+
+corps_sii ::= IDENT POINT act POINTVIRG corps_sii
+	      | pourtt corps_sii
+	      | message corps_sii
+              | IDENT POINT act POINTVIRG 
+	      | pourtt 
+	      | message;
+		
+
+suite_sii ::= SINON sii 
+	     | SINON corps_sii
+	     |;
+
+
+/*---------------------- les actions ----------------------------*/
+act ::=  OUVRIR:a {:action_courante = String.valueOf(a).toUpperCase(); :} 
+	| FERMER:a {:action_courante = String.valueOf(a).toUpperCase(); :}  
+	| ETEINDRE:a {:action_courante = String.valueOf(a).toUpperCase(); :} 
+	| ALLUMER:a {:action_courante = String.valueOf(a).toUpperCase(); :}  
+	| TAMISER:a {:action_courante = String.valueOf(a).toUpperCase(); :}  
+	| ALLUMERPART:a {:action_courante = String.valueOf(a).toUpperCase(); :}  
+	| ALLUMERECO:a {:action_courante = String.valueOf(a).toUpperCase(); :} 
+	| OUVRIRPART:a {:action_courante = String.valueOf(a).toUpperCase(); :} 
+	| FERMERPART:a {:action_courante = String.valueOf(a).toUpperCase(); :};
+
+/******************************************** COMMANDES **************************************************************************/
+
+/*---------------------- déclaration des commandes : associer ou bien programmer ---------------------------------------*/
+decs_com ::= com_asso decs_com
+	     | com_prog decs_com 
+	     | com_asso 
+	     | com_prog ;
+
+/*---------------------- associer : simple ou groupe --------------------------------------------------------------------*/
+com_asso ::= asso_simple 
+	     | asso_groupe;
+
+/*---------------------- associer : simple ----------------------------------------------------------------------------*/
+asso_simple ::= ASSOC IDENT AFFECT IDENT POINT;
+
+/*---------------------- associer : groupe ----------------------------------------------------------------------------*/
+asso_groupe ::= ASSOC IDENT AFFECT GUIO scenars GUIF POINT;
+
+scenars ::= IDENT VIRG scenars 
+	    | IDENT;
+
+/*---------------------- programmer------------------------------------------------------------------------------------*/
+com_prog ::= PROGRAMMER IDENT AFFECT PARO date PARF POINT 
+	     | PROGRAMMER IDENT AFFECT GUIO PARO date PARF VIRG PARO date PARF GUIF POINT;
+
+date ::= nb VIRG nb VIRG nb VIRG nb VIRG nb;
+
+nb ::= ENTIER 
+       | IDENT;
+
+/*********************************************************************************************************************************/
+
+
+
+/******************************************** ETATS ******************************************************************************/
+etats ::=  ALLUME 
+	   | ETEINT 
+           | DEMI 
+           | ECO 
+           | OUVERT 
+           | FERME;
+
+/**********************************************************************************************************************************/
+
+/******************************************** COMMENTAIRES ************************************************************************/
+
+lcomment ::= COMMENT lcomment |;
+
+
+/*dec	::= VAR  {: System.out.println("décla ok"+ " ligne "+ parser.pline()); :}
+	| error {: System.out.println("Récupération erreur syntaxique au niveau de la déclaration - déclaration non traitée"); :};*/
